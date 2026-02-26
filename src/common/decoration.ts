@@ -1,5 +1,4 @@
 import {
-  ColorThemeKind,
   Range,
   TextEditor,
   ThemableDecorationAttachmentRenderOptions,
@@ -9,24 +8,7 @@ import {
 } from "vscode";
 import { TokenType } from "../leaderkey/command";
 
-type ThemeType = "dark" | "light";
-let globalThemeType: ThemeType = "dark";
-
-export function updateGlobalThemeType() {
-  switch (window.activeColorTheme.kind) {
-    case ColorThemeKind.Dark:
-    case ColorThemeKind.HighContrast:
-      globalThemeType = "dark";
-      break;
-    case ColorThemeKind.Light:
-    case ColorThemeKind.HighContrastLight:
-      globalThemeType = "light";
-      break;
-    default:
-      globalThemeType = "dark";
-      break;
-  }
-}
+export type ColorRef = ThemeColor | string;
 
 export let stickyScrollMaxRows: number = 0;
 export function updateStickyScrollConf() {
@@ -39,26 +21,8 @@ export function updateStickyScrollConf() {
 }
 updateStickyScrollConf();
 
-type BackgroundType = "default" | "header" | "border" | "cursor" | "gray";
-
-const decoRenderOpts: {
-  [themeType in ThemeType]: { [decoType in BackgroundType]: string };
-} = {
-  dark: {
-    default: "#292b2e",
-    header: "#5d4d7a",
-    border: "#68217A",
-    cursor: "#BBB",
-    gray: "#88888833",
-  },
-  light: {
-    default: "#FAF7EC",
-    header: "#E6E6EA",
-    border: "#E7E5EB",
-    cursor: "#444",
-    gray: "#88888833",
-  },
-};
+export type BackgroundRole = "default" | "header" | "border" | "cursor" | "gray";
+type BackgroundType = BackgroundRole;
 
 export type TextType =
   | TokenType
@@ -69,36 +33,67 @@ export type TextType =
   | "dim"
   | "dimdim";
 
-const themeRenderOpts: {
-  [themeType in ThemeType]: {
-    [tokenType in TextType]: ThemableDecorationAttachmentRenderOptions;
-  };
-} = {
-  dark: {
-    dir: { color: "#bc6ec5" },
-    key: { color: "#bc6ec5", fontWeight: "bold" },
-    arrow: { color: "#2d9574" },
-    "arrow-bold": { color: "#2d9574", fontWeight: "bold" },
-    binding: { color: "#4190d8" },
-    highlight: { color: "#4190d8", fontWeight: "bold" },
-    command: { color: "#ccc" },
-    dim: { color: "#ccc8" },
-    dimdim: { color: "#ccc3" },
-    "error-bold": { color: new ThemeColor("errorForeground"), fontWeight: "bold" },
-  },
-  light: {
-    key: { color: "#692F60", fontWeight: "bold" },
-    dir: { color: "#692F60" },
-    arrow: { color: "#2A976D" },
-    "arrow-bold": { color: "#2A976D", fontWeight: "bold" },
-    binding: { color: "#3781C2" },
-    highlight: { color: "#3781C2", fontWeight: "bold" },
-    command: { color: "#67537A" },
-    dim: { color: "#67537A80" },
-    dimdim: { color: "#67537A30" },
-    "error-bold": { color: new ThemeColor("errorForeground"), fontWeight: "bold" },
-  },
+type TextRole = TextType;
+
+const backgroundTokenFallbacks: Record<BackgroundRole, string[]> = {
+  default: ["editorHoverWidget.background", "editorWidget.background", "editor.background"],
+  header: [
+    "editorHoverWidget.statusBarBackground",
+    "editorHoverWidget.background",
+    "editorWidget.background",
+  ],
+  border: ["editorHoverWidget.border", "editorWidget.border", "contrastBorder"],
+  cursor: ["editorCursor.foreground", "editor.foreground"],
+  gray: [
+    "editor.selectionHighlightBackground",
+    "editor.wordHighlightBackground",
+    "list.inactiveSelectionBackground",
+  ],
 };
+
+const textTokenFallbacks: Record<TextRole, string[]> = {
+  command: ["editorHoverWidget.foreground", "editor.foreground"],
+  key: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
+  binding: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
+  highlight: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
+  dir: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
+  arrow: ["descriptionForeground", "editorHoverWidget.foreground", "editor.foreground"],
+  "arrow-bold": ["descriptionForeground", "editorHoverWidget.foreground", "editor.foreground"],
+  dim: ["descriptionForeground", "editorHoverWidget.foreground", "editor.foreground"],
+  dimdim: ["disabledForeground", "descriptionForeground", "editorHoverWidget.foreground"],
+  "error-bold": ["errorForeground"],
+};
+
+const textStyleOpts: Partial<Record<TextRole, Pick<ThemableDecorationAttachmentRenderOptions, "fontWeight">>> = {
+  key: { fontWeight: "bold" },
+  "arrow-bold": { fontWeight: "bold" },
+  highlight: { fontWeight: "bold" },
+  "error-bold": { fontWeight: "bold" },
+};
+
+function tokenToCssVar(token: string) {
+  return `--vscode-${token.replaceAll(".", "-")}`;
+}
+
+function cssVarFallback(tokens: string[]): string {
+  if (tokens.length === 0) return "";
+  let expr = `var(${tokenToCssVar(tokens[tokens.length - 1])})`;
+  for (let i = tokens.length - 2; i >= 0; i--) {
+    expr = `var(${tokenToCssVar(tokens[i])}, ${expr})`;
+  }
+  return expr;
+}
+
+export function resolveBackground(role: BackgroundRole): ColorRef {
+  return cssVarFallback(backgroundTokenFallbacks[role]);
+}
+
+export function resolveText(role: TextRole): ThemableDecorationAttachmentRenderOptions {
+  return {
+    ...(textStyleOpts[role] ?? {}),
+    color: cssVarFallback(textTokenFallbacks[role]),
+  };
+}
 
 export type Decoration =
   | {
@@ -140,8 +135,7 @@ export function renderDecorations(
           color: "transparent",
           before: {
             contentText: "",
-            backgroundColor:
-              decoRenderOpts[globalThemeType][deco.background ?? "default"],
+            backgroundColor: resolveBackground(deco.background ?? "default"),
             height: `${100 * deco.lines}%`,
             width: `${deco.width ?? 200}ch`,
             margin: `0 -1ch 0 ${deco.charOffset !== undefined ? 0.5 + deco.charOffset : 0}ch;
@@ -154,10 +148,10 @@ export function renderDecorations(
           color: "transparent",
           before: {
             fontWeight: "normal",
-            ...themeRenderOpts[globalThemeType][deco.foreground],
+            ...resolveText(deco.foreground),
             ...(deco.background === undefined
               ? {}
-              : { backgroundColor: decoRenderOpts[globalThemeType][deco.background] }),
+              : { backgroundColor: resolveBackground(deco.background) }),
             height: "100%",
             width: "200ch",
             margin: `0 -1ch 0 ${deco.charOffset ?? 0}ch; position: absolute; z-index: ${110 + (deco.zOffset ?? 0)}; padding-left: 0.5ch; white-space: pre;
@@ -172,5 +166,5 @@ export function renderDecorations(
 }
 
 export function getThemeRenderOpts(tokenType: TextType) {
-  return themeRenderOpts[globalThemeType][tokenType];
+  return resolveText(tokenType);
 }

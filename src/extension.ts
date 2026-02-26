@@ -6,7 +6,7 @@ import {
   window,
   workspace,
 } from "vscode";
-import { updateGlobalThemeType, updateStickyScrollConf } from "./common/decoration";
+import { updateStickyScrollConf } from "./common/decoration";
 import { commonPrefix, init as initGlobal } from "./common/global";
 import { getDir, inferPathFromHooks, inferPathFromUri } from "./common/inferPathFromUri";
 import { ENV_HOME, init as initRemote } from "./common/remote";
@@ -141,6 +141,35 @@ class PanelManager {
 
   setRgPanel(panel: RgPanel) {
     this.currentPanel = { type: "ripgrep", panel };
+  }
+
+  refreshTheme() {
+    if (this.currentPanel === undefined) return;
+    switch (this.currentPanel.type) {
+      case "leaderkey":
+        if (this.leaderKeyPanel.path === "") return;
+        if (this.leaderKeyPanel.when === undefined) {
+          this.leaderKeyPanel.render(this.leaderKeyPanel.path);
+        } else {
+          this.leaderKeyPanel.render({
+            path: this.leaderKeyPanel.path,
+            when: this.leaderKeyPanel.when,
+          });
+        }
+        break;
+      case "findfile":
+        this.currentPanel.panel.render();
+        break;
+      case "ripgrep":
+        this.currentPanel.panel.render();
+        break;
+      case "fuzzypick":
+        this.currentPanel.panel.render();
+        break;
+      default: {
+        const _exhaustive: never = this.currentPanel;
+      }
+    }
   }
 
   async showFuzzyPick(options: {
@@ -322,12 +351,10 @@ export async function activate(context: ExtensionContext) {
       }
     }),
 
-    window.onDidChangeActiveColorTheme((_ct) => updateGlobalThemeType()),
+    window.onDidChangeActiveColorTheme((_ct) => panelManager.refreshTheme()),
 
     ...registerMultiCursorContext(),
   );
-  updateGlobalThemeType();
-
   registerCommands(context);
 }
 
