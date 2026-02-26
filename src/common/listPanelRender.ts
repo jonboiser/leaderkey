@@ -2,6 +2,33 @@ import { TextEditor } from "vscode";
 import { Decoration, renderDecorations, TextType } from "./decoration";
 import { getRenderRangeFromTop } from "./renderRange";
 
+const PANEL_CONTENT_WIDTH = 196;
+
+function borderText(innerLines: number) {
+  const horizontal = "─".repeat(PANEL_CONTENT_WIDTH + 2);
+  const middle = `│${" ".repeat(PANEL_CONTENT_WIDTH + 2)}│`;
+  return [
+    `┌${horizontal}┐`,
+    ...new Array(innerLines).fill(middle),
+    `└${horizontal}┘`,
+  ].join("\n");
+}
+
+function shiftDecoForFramedPanel(deco: Decoration): Decoration {
+  if (deco.type === "text") {
+    return {
+      ...deco,
+      lineOffset: (deco.lineOffset ?? 0) + 1,
+      charOffset: (deco.charOffset ?? 0) + 2,
+    };
+  }
+  return {
+    ...deco,
+    lineOffset: (deco.lineOffset ?? 0) + 1,
+    charOffset: (deco.charOffset ?? 0) + 1,
+  };
+}
+
 /**
  * A text layer to render at a specific position.
  */
@@ -54,42 +81,45 @@ export function renderListPanel(
 ): ReturnType<typeof renderDecorations> {
   const { header, inputDecos, rows, selectedRow } = config;
   const rowCount = rows.length;
+  const innerLines = rowCount + 2; // header + input + rows
 
   const decos: Decoration[] = [
+    // frame
+    {
+      type: "text",
+      text: borderText(innerLines),
+      foreground: "dim",
+    },
     // overall background
-    { type: "background", lines: rowCount + 2 },
+    {
+      type: "background",
+      lines: innerLines,
+      lineOffset: 1,
+      charOffset: 1,
+      width: PANEL_CONTENT_WIDTH + 2,
+    },
     // header
     {
       type: "text",
       text: header,
       foreground: "binding",
-    },
-    // top border
-    {
-      type: "background",
-      background: "border",
-      lines: 0.5,
-      lineOffset: -0.5,
-    },
-    // bottom border
-    {
-      type: "background",
-      background: "border",
-      lines: 0.5,
-      lineOffset: rowCount + 2,
+      lineOffset: 1,
+      charOffset: 2,
     },
     // input line decorations
-    ...inputDecos,
+    ...inputDecos.map(shiftDecoForFramedPanel),
   ];
 
   // Selection highlight (selectedRow === -1 means input line is selected)
   if (selectedRow !== undefined) {
-    const lineOffset = selectedRow === -1 ? 1 : selectedRow + 2;
+    const lineOffset = selectedRow === -1 ? 2 : selectedRow + 3;
     decos.push({
       type: "background",
       background: "header",
       lines: 1,
       lineOffset,
+      charOffset: 1,
+      width: PANEL_CONTENT_WIDTH + 2,
       zOffset: 1,
     });
   }
@@ -105,13 +135,13 @@ export function renderListPanel(
         type: "text",
         text: layer.text,
         foreground: layer.foreground,
-        lineOffset,
-        charOffset: layer.charOffset,
+        lineOffset: lineOffset + 1,
+        charOffset: (layer.charOffset ?? 0) + 2,
       });
     }
   }
 
-  const range = getRenderRangeFromTop(editor, rowCount + 2);
+  const range = getRenderRangeFromTop(editor, rowCount + 3);
   return renderDecorations(decos, editor, range);
 }
 

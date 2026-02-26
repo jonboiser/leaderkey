@@ -26,29 +26,23 @@ import { window } from "vscode";
 import { renderDecorations, resolveBackground, resolveText } from "./decoration";
 
 describe("decoration theme resolver", () => {
-  test("resolves background token fallbacks in order", () => {
-    expect(resolveBackground("default")).toBe(
-      "var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background, var(--vscode-editor-background)))",
-    );
-    expect(resolveBackground("border")).toBe(
-      "var(--vscode-editorHoverWidget-border, var(--vscode-editorWidget-border, var(--vscode-contrastBorder)))",
-    );
+  test("resolves background tokens", () => {
+    expect((resolveBackground("default") as any).id).toBe("editorHoverWidget.background");
+    expect((resolveBackground("border") as any).id).toBe("editorHoverWidget.border");
   });
 
-  test("resolves text token fallbacks and preserves font weights", () => {
+  test("resolves text tokens and preserves font weights", () => {
     expect(resolveText("command")).toEqual({
-      color:
-        "var(--vscode-editorHoverWidget-foreground, var(--vscode-editor-foreground))",
+      color: { id: "editorHoverWidget.foreground" },
     });
 
     expect(resolveText("key")).toEqual({
-      color:
-        "var(--vscode-textLink-foreground, var(--vscode-editorHoverWidget-foreground, var(--vscode-editor-foreground)))",
+      color: { id: "symbolIcon.typeParameterForeground" },
       fontWeight: "bold",
     });
 
     expect(resolveText("error-bold")).toEqual({
-      color: "var(--vscode-errorForeground)",
+      color: { id: "errorForeground" },
       fontWeight: "bold",
     });
   });
@@ -75,12 +69,10 @@ describe("renderDecorations", () => {
     const create = (window.createTextEditorDecorationType as jest.Mock).mock;
     expect(create.calls).toHaveLength(2);
 
-    expect(create.calls[0][0].before.backgroundColor).toBe(
-      "var(--vscode-editorHoverWidget-statusBarBackground, var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background)))",
-    );
-    expect(create.calls[1][0].before.color).toBe(
-      "var(--vscode-textLink-foreground, var(--vscode-editorHoverWidget-foreground, var(--vscode-editor-foreground)))",
-    );
+    expect(create.calls[0][0].before.backgroundColor).toEqual({
+      id: "editorHoverWidget.statusBarBackground",
+    });
+    expect(create.calls[1][0].before.color).toEqual({ id: "list.highlightForeground" });
     expect(editor.setDecorations).toHaveBeenCalledTimes(2);
   });
 });

@@ -35,33 +35,25 @@ export type TextType =
 
 type TextRole = TextType;
 
-const backgroundTokenFallbacks: Record<BackgroundRole, string[]> = {
-  default: ["editorHoverWidget.background", "editorWidget.background", "editor.background"],
-  header: [
-    "editorHoverWidget.statusBarBackground",
-    "editorHoverWidget.background",
-    "editorWidget.background",
-  ],
-  border: ["editorHoverWidget.border", "editorWidget.border", "contrastBorder"],
-  cursor: ["editorCursor.foreground", "editor.foreground"],
-  gray: [
-    "editor.selectionHighlightBackground",
-    "editor.wordHighlightBackground",
-    "list.inactiveSelectionBackground",
-  ],
+const backgroundToken: Record<BackgroundRole, string> = {
+  default: "editorHoverWidget.background",
+  header: "editorHoverWidget.statusBarBackground",
+  border: "editorHoverWidget.border",
+  cursor: "editorCursor.foreground",
+  gray: "editor.selectionHighlightBackground",
 };
 
-const textTokenFallbacks: Record<TextRole, string[]> = {
-  command: ["editorHoverWidget.foreground", "editor.foreground"],
-  key: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
-  binding: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
-  highlight: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
-  dir: ["textLink.foreground", "editorHoverWidget.foreground", "editor.foreground"],
-  arrow: ["descriptionForeground", "editorHoverWidget.foreground", "editor.foreground"],
-  "arrow-bold": ["descriptionForeground", "editorHoverWidget.foreground", "editor.foreground"],
-  dim: ["descriptionForeground", "editorHoverWidget.foreground", "editor.foreground"],
-  dimdim: ["disabledForeground", "descriptionForeground", "editorHoverWidget.foreground"],
-  "error-bold": ["errorForeground"],
+const textToken: Record<TextRole, string> = {
+  command: "editorHoverWidget.foreground",
+  key: "symbolIcon.typeParameterForeground",
+  binding: "list.highlightForeground",
+  highlight: "editorLink.activeForeground",
+  dir: "symbolIcon.folderForeground",
+  arrow: "descriptionForeground",
+  "arrow-bold": "descriptionForeground",
+  dim: "descriptionForeground",
+  dimdim: "disabledForeground",
+  "error-bold": "errorForeground",
 };
 
 const textStyleOpts: Partial<Record<TextRole, Pick<ThemableDecorationAttachmentRenderOptions, "fontWeight">>> = {
@@ -71,27 +63,14 @@ const textStyleOpts: Partial<Record<TextRole, Pick<ThemableDecorationAttachmentR
   "error-bold": { fontWeight: "bold" },
 };
 
-function tokenToCssVar(token: string) {
-  return `--vscode-${token.replaceAll(".", "-")}`;
-}
-
-function cssVarFallback(tokens: string[]): string {
-  if (tokens.length === 0) return "";
-  let expr = `var(${tokenToCssVar(tokens[tokens.length - 1])})`;
-  for (let i = tokens.length - 2; i >= 0; i--) {
-    expr = `var(${tokenToCssVar(tokens[i])}, ${expr})`;
-  }
-  return expr;
-}
-
 export function resolveBackground(role: BackgroundRole): ColorRef {
-  return cssVarFallback(backgroundTokenFallbacks[role]);
+  return new ThemeColor(backgroundToken[role]);
 }
 
 export function resolveText(role: TextRole): ThemableDecorationAttachmentRenderOptions {
   return {
     ...(textStyleOpts[role] ?? {}),
-    color: cssVarFallback(textTokenFallbacks[role]),
+    color: new ThemeColor(textToken[role]),
   };
 }
 

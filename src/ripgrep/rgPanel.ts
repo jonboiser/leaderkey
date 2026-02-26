@@ -64,6 +64,27 @@ function spcs(len: number) {
   return " ".repeat(len);
 }
 
+const PANEL_CONTENT_WIDTH = 196;
+
+function borderText(innerLines: number) {
+  const horizontal = "─".repeat(PANEL_CONTENT_WIDTH + 2);
+  const middle = `│${" ".repeat(PANEL_CONTENT_WIDTH + 2)}│`;
+  return [
+    `┌${horizontal}┐`,
+    ...new Array(innerLines).fill(middle),
+    `└${horizontal}┘`,
+  ].join("\n");
+}
+
+function shiftTextDeco(deco: Decoration): Decoration {
+  if (deco.type !== "text") return deco;
+  return {
+    ...deco,
+    lineOffset: (deco.lineOffset ?? 0) + 1,
+    charOffset: (deco.charOffset ?? 0) + 2,
+  };
+}
+
 // TODO stale indictor if loaded from old query, and [TAB] to refresh result
 
 export type Query = RipGrepQuery & {
@@ -400,7 +421,9 @@ export class RgPanel {
         lines: 1,
         background: "header",
         zOffset: 1,
-        lineOffset: selection - renderedLines.start + HEADER_NUM_LINES,
+        lineOffset: selection - renderedLines.start + HEADER_NUM_LINES + 1,
+        charOffset: 1,
+        width: PANEL_CONTENT_WIDTH + 2,
       });
     }
 
@@ -496,54 +519,63 @@ export class RgPanel {
       charOffset: modeHintPos,
     };
 
+    const framedEditorDecos = editorDecos.map((deco) => {
+      if (deco.type === "text") return shiftTextDeco(deco);
+      return {
+        ...deco,
+        lineOffset: (deco.lineOffset ?? 0) + 1,
+        charOffset: (deco.charOffset ?? 0) + 1,
+      };
+    });
+
     const decos: Decoration[] = [
-      { type: "background", lines: bgSize },
-      { type: "background", lines: 0.5, lineOffset: -0.5, background: "border" },
-      {
-        type: "background",
-        lines: 0.5,
-        lineOffset: bgSize,
-        background: "border",
-      },
       {
         type: "text",
-        text: rgIndicator,
-        foreground: ms.isDone ? "arrow-bold" : "binding",
+        text: borderText(bgSize),
+        foreground: "dim",
       },
-      ...editorDecos,
-      ...loadLastHintDeco,
-      modeDeco,
-      { type: "text", text: status, foreground: "command", lineOffset: 1 },
-      { type: "text", text: statusDim, foreground: "dim", lineOffset: 1 },
-      ...selectedBg,
+      { type: "background", lines: bgSize, lineOffset: 1, charOffset: 1, width: PANEL_CONTENT_WIDTH + 2 },
       {
+        ...shiftTextDeco({
+          type: "text",
+          text: rgIndicator,
+          foreground: ms.isDone ? "arrow-bold" : "binding",
+        }),
+      },
+      ...framedEditorDecos,
+      ...loadLastHintDeco.map(shiftTextDeco),
+      shiftTextDeco(modeDeco),
+      shiftTextDeco({ type: "text", text: status, foreground: "command", lineOffset: 1 }),
+      shiftTextDeco({ type: "text", text: statusDim, foreground: "dim", lineOffset: 1 }),
+      ...selectedBg,
+      shiftTextDeco({
         type: "text",
         text: fileText,
         foreground: "binding",
         lineOffset: HEADER_NUM_LINES,
-      },
-      {
+      }),
+      shiftTextDeco({
         type: "text",
         text: lineNoText,
         foreground: "arrow",
         lineOffset: HEADER_NUM_LINES,
-      },
-      {
+      }),
+      shiftTextDeco({
         type: "text",
         text: normalText,
         foreground: "command",
         lineOffset: HEADER_NUM_LINES,
-      },
-      {
+      }),
+      shiftTextDeco({
         type: "text",
         text: highlightText,
         foreground: "error-bold",
         lineOffset: HEADER_NUM_LINES,
-      },
+      }),
     ];
     const range = getRenderRangeFromTop(
       editor,
-      HEADER_NUM_LINES + renderedLines.len,
+      HEADER_NUM_LINES + renderedLines.len + 1,
       "ignore-sticky-scroll",
     );
     return renderDecorations(decos, editor, range);

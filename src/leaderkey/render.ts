@@ -113,6 +113,16 @@ function appendStringRightAligned(input: string, toAppend: string, right: number
   );
 }
 
+function borderText(width: number, innerLines: number) {
+  const horizontal = "─".repeat(width + 2);
+  const middle = `│${" ".repeat(width + 2)}│`;
+  return [
+    `┌${horizontal}┐`,
+    ...new Array(innerLines).fill(middle),
+    `└${horizontal}┘`,
+  ].join("\n");
+}
+
 export function renderBinding(
   editor: TextEditor,
   binding: Bindings,
@@ -126,30 +136,43 @@ export function renderBinding(
   const transientMode = binding.transient ? `${binding.name}    ` : "";
   strHeader = appendStringRightAligned(strHeader, transientMode, rendered.maxLen >> 1);
   strHeader = appendStringRightAligned(strHeader, headerWhen, rendered.maxLen);
+  const panelWidth = Math.max(rendered.maxLen, strHeader.length);
+  const innerLines = rendered.nLines + 1; // header + content rows
+
+  const border: Decoration = {
+    type: "text",
+    text: borderText(panelWidth, innerLines),
+    foreground: "binding",
+  };
   const header: Decoration = {
     type: "text",
     text: strHeader,
     foreground: "command",
-    background: "header",
+    lineOffset: 1,
+    charOffset: 2,
   };
   const background: Decoration = {
     type: "background",
     background: "default",
-    lines: rendered.nLines + 2,
-    lineOffset: -0.5,
+    lines: innerLines,
+    lineOffset: 1,
+    charOffset: 1,
+    width: panelWidth + 2,
   };
 
   const decos = [
+    border,
     header,
     background,
     ...rendered.decos.map<Decoration>(([tt, str]) => ({
       type: "text",
       text: str,
-      lineOffset: 1,
+      lineOffset: 2,
+      charOffset: 2,
       foreground: tt,
     })),
   ];
 
-  const range = getRenderRangeFromTop(editor, rendered.nLines + 1);
+  const range = getRenderRangeFromTop(editor, rendered.nLines + 2);
   return renderDecorations(decos, editor, range);
 }
