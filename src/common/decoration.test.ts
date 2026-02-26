@@ -1,4 +1,5 @@
 jest.mock("vscode", () => {
+  let keyForeground = "";
   const createTextEditorDecorationType = jest.fn((opts) => ({
     opts,
     dispose: jest.fn(),
@@ -9,8 +10,13 @@ jest.mock("vscode", () => {
       createTextEditorDecorationType,
     },
     workspace: {
-      getConfiguration: jest.fn(() => ({
-        get: (_key: string, fallback: unknown) => fallback,
+      getConfiguration: jest.fn((section?: string) => ({
+        get: (key: string, fallback: unknown) => {
+          if (section === "leaderkey.theme" && key === "keyForeground") {
+            return keyForeground;
+          }
+          return fallback;
+        },
       })),
     },
     ThemeColor: class ThemeColor {
@@ -19,13 +25,21 @@ jest.mock("vscode", () => {
         this.id = id;
       }
     },
+    __setKeyForeground: (value: string) => {
+      keyForeground = value;
+    },
   };
 });
 
 import { window } from "vscode";
 import { renderDecorations, resolveBackground, resolveText } from "./decoration";
+const { __setKeyForeground } = jest.requireMock("vscode");
 
 describe("decoration theme resolver", () => {
+  beforeEach(() => {
+    __setKeyForeground("");
+  });
+
   test("resolves background tokens", () => {
     expect((resolveBackground("default") as any).id).toBe("editorHoverWidget.background");
     expect((resolveBackground("border") as any).id).toBe("editorHoverWidget.border");
@@ -37,12 +51,26 @@ describe("decoration theme resolver", () => {
     });
 
     expect(resolveText("key")).toEqual({
-      color: { id: "symbolIcon.typeParameterForeground" },
+      color: { id: "symbolIcon.classForeground" },
       fontWeight: "bold",
     });
 
     expect(resolveText("error-bold")).toEqual({
       color: { id: "errorForeground" },
+      fontWeight: "bold",
+    });
+  });
+
+  test("supports key color override from config token id or literal color", () => {
+    __setKeyForeground("symbolIcon.interfaceForeground");
+    expect(resolveText("key")).toEqual({
+      color: { id: "symbolIcon.interfaceForeground" },
+      fontWeight: "bold",
+    });
+
+    __setKeyForeground("#859900");
+    expect(resolveText("key")).toEqual({
+      color: "#859900",
       fontWeight: "bold",
     });
   });

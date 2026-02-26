@@ -349,6 +349,9 @@ export async function activate(context: ExtensionContext) {
       if (event.affectsConfiguration("editor.stickyScroll")) {
         updateStickyScrollConf();
       }
+      if (event.affectsConfiguration("leaderkey.theme.keyForeground")) {
+        panelManager.refreshTheme();
+      }
     }),
 
     window.onDidChangeActiveColorTheme((_ct) => panelManager.refreshTheme()),

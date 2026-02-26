@@ -213,6 +213,11 @@
           "type": "boolean",
           "default": false,
           "description": "Hide the leaderkey menu until `?` is pressed."
+        },
+        "leaderkey.theme.keyForeground": {
+          "type": "string",
+          "default": "",
+          "description": "Override key color used in in-buffer leaderkey panels. Accepts a VS Code theme token id (e.g. `symbolIcon.classForeground`) or a literal color like `#859900`."
         }
       }
     },

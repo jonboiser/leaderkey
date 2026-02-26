@@ -45,7 +45,7 @@ const backgroundToken: Record<BackgroundRole, string> = {
 
 const textToken: Record<TextRole, string> = {
   command: "editorHoverWidget.foreground",
-  key: "symbolIcon.typeParameterForeground",
+  key: "symbolIcon.classForeground",
   binding: "list.highlightForeground",
   highlight: "editorLink.activeForeground",
   dir: "symbolIcon.folderForeground",
@@ -68,9 +68,19 @@ export function resolveBackground(role: BackgroundRole): ColorRef {
 }
 
 export function resolveText(role: TextRole): ThemableDecorationAttachmentRenderOptions {
+  const keyForegroundOverride = workspace
+    .getConfiguration("leaderkey.theme")
+    .get("keyForeground", "")
+    .trim();
+  const resolvedColor =
+    role === "key" && keyForegroundOverride !== ""
+      ? keyForegroundOverride.includes(".")
+        ? new ThemeColor(keyForegroundOverride)
+        : keyForegroundOverride
+      : new ThemeColor(textToken[role]);
   return {
     ...(textStyleOpts[role] ?? {}),
-    color: new ThemeColor(textToken[role]),
+    color: resolvedColor,
   };
 }
 
