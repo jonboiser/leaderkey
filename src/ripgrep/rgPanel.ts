@@ -524,7 +524,7 @@ export class RgPanel {
       return {
         ...deco,
         lineOffset: (deco.lineOffset ?? 0) + 1,
-        charOffset: (deco.charOffset ?? 0) + 1,
+        charOffset: (deco.charOffset ?? 0) + 2,
       };
     });
 

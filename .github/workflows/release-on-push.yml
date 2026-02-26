@@ -1,0 +1,54 @@
+name: Release VSIX On Push
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-vsix-on-push
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build VSIX
+        run: pnpm run vsce
+
+      - name: Publish rolling release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: private-latest
+          name: Private VSIX (latest)
+          commit: ${{ github.sha }}
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: true
+          artifacts: dist/leaderkey.vsix
+          body: |
+            Automated private VSIX build from `${{ github.sha }}`.
+           
+            Install command:
+            `curl -fL -H "Authorization: Bearer $GITHUB_TOKEN" -o /tmp/leaderkey.vsix https://github.com/${{ github.repository }}/releases/latest/download/leaderkey.vsix && code --install-extension /tmp/leaderkey.vsix --force`

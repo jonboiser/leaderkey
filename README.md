@@ -32,6 +32,33 @@ Leaderkey is designed with the following considerations in mind:
 
 ## Installation
 
+### Install from private GitHub release (no Marketplace)
+
+This repository publishes a rolling VSIX asset on every push to `main` via GitHub
+Actions (`private-latest` release).
+
+1. Create a GitHub token that can read this private repository (classic `repo` scope, or
+   fine-grained token with `Contents: Read`).
+2. Set your token and repository values:
+
+```bash
+export GITHUB_TOKEN="<your-token>"
+export LEADERKEY_REPO="<org-or-user>/<repo>"
+```
+
+3. Download and install directly from the latest release asset:
+
+```bash
+curl -fL \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -o /tmp/leaderkey.vsix \
+  "https://github.com/${LEADERKEY_REPO}/releases/latest/download/leaderkey.vsix"
+
+code --install-extension /tmp/leaderkey.vsix --force
+```
+
+If you are using VS Code Insiders, replace `code` with `code-insiders`.
+
 Leaderkey works the best with the [Vim](https://aka.ms/vscodevim) extension. Here is all
 the customization you need:
 
